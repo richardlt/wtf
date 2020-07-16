@@ -1,8 +1,12 @@
 package cdsqueue
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/bep/debounce"
 	"strconv"
+	"time"
 
 	"github.com/ovh/cds/sdk"
 	"github.com/ovh/cds/sdk/cdsclient"
@@ -40,7 +44,7 @@ func NewWidget(app *tview.Application, pages *tview.Pages, settings *Settings) *
 	widget.initializeKeyboardControls()
 	widget.View.SetRegions(true)
 	widget.View.SetInputCapture(widget.InputCapture)
-	widget.SetDisplayFunction(widget.display)
+	widget.SetDisplayFunction(widget.displayReload)
 
 	widget.Unselect()
 	widget.filters = []string{sdk.StatusWaiting, sdk.StatusBuilding}
@@ -51,6 +55,56 @@ func NewWidget(app *tview.Application, pages *tview.Pages, settings *Settings) *
 		Host:                              settings.apiURL,
 		BuitinConsumerAuthenticationToken: settings.token,
 	})
+
+	ctx := context.Background()
+	chanMessageReceived := make(chan sdk.WebsocketEvent)
+	chanMessageToSend := make(chan []sdk.WebsocketFilter)
+
+	go func() {
+		widget.client.WebsocketEventsListen(ctx, chanMessageToSend, chanMessageReceived)
+	}()
+
+	chanMessageToSend <- []sdk.WebsocketFilter{{
+		Type: sdk.WebsocketFilterTypeQueue,
+	}}
+
+	widget.Items, _ = widget.client.QueueWorkflowNodeJobRun(widget.currentFilter())
+
+	debounced := debounce.New(500 * time.Millisecond)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case evt := <-chanMessageReceived:
+				debounced(func() {
+					if evt.Event.EventType != fmt.Sprintf("%T", sdk.EventRunWorkflowJob{}) {
+						return
+					}
+
+					var e sdk.EventRunWorkflowJob
+					if err := json.Unmarshal(evt.Event.Payload, &e); err != nil {
+						return
+					}
+
+					if e.Status == sdk.StatusWaiting || e.Status == sdk.StatusBuilding {
+						widget.Items, _ = widget.client.QueueWorkflowNodeJobRun(widget.currentFilter())
+					} else {
+						newItems := make([]sdk.WorkflowNodeJobRun, 0, len(widget.Items))
+						for i := range widget.Items {
+							if widget.Items[i].ID != e.ID {
+								newItems = append(newItems, widget.Items[i])
+							}
+						}
+						widget.Items = newItems
+					}
+
+					widget.Refresh()
+				})
+			}
+		}
+	}()
 
 	config, _ := widget.client.ConfigUser()
 

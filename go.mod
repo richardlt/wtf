@@ -12,6 +12,8 @@ require (
 	github.com/adlio/trello v1.7.0
 	github.com/alecthomas/chroma v0.7.3
 	github.com/andygrunwald/go-gerrit v0.0.0-20190825170856-5959a9bf9ff8
+	github.com/apoydence/onpar v0.0.0-20190519213022-ee068f8ea4d1 // indirect
+	github.com/bep/debounce v1.2.0
 	github.com/briandowns/openweathermap v0.0.0-20180804155945-5f41b7c9d92d
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
@@ -46,7 +48,8 @@ require (
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onsi/ginkgo v1.12.0 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
-	github.com/ovh/cds v0.0.0-20200131143542-5e69464c6598
+	github.com/ovh/cds v0.0.0-20200715082758-4c61fa7bc392
+	github.com/ovh/cds/sdk/izanami v0.0.0-20190703081656-683453b50b2a // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.5.0

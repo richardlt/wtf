@@ -12,6 +12,11 @@ func (widget *Widget) display() {
 	widget.TextWidget.Redraw(widget.content)
 }
 
+func (widget *Widget) displayReload() {
+	widget.Items, _ = widget.client.QueueWorkflowNodeJobRun(widget.currentFilter())
+	widget.display()
+}
+
 func (widget *Widget) content() (string, string, bool) {
 	if len(widget.View.GetHighlights()) > 0 {
 		widget.View.ScrollToHighlight()
@@ -19,7 +24,6 @@ func (widget *Widget) content() (string, string, bool) {
 		widget.View.ScrollToBeginning()
 	}
 
-	widget.Items = make([]sdk.WorkflowNodeJobRun, 0)
 	filter := widget.currentFilter()
 	_, _, width, _ := widget.View.GetRect()
 
@@ -41,20 +45,23 @@ func (widget *Widget) title(filter string) string {
 }
 
 func (widget *Widget) displayQueue(filter string) string {
-	runs, _ := widget.client.QueueWorkflowNodeJobRun(filter)
+	filtered := make([]sdk.WorkflowNodeJobRun, 0, len(widget.Items))
+	for i := range widget.Items {
+		if widget.Items[i].Status == filter {
+			filtered = append(filtered, widget.Items[i])
+		}
+	}
 
-	widget.SetItemCount(len(runs))
+	widget.SetItemCount(len(filtered))
 
-	if len(runs) == 0 {
+	if len(filtered) == 0 {
 		return " [grey]none[white]\n"
 	}
 
 	var content string
-	for idx, job := range runs {
+	for idx, job := range filtered {
 		content += fmt.Sprintf(`[grey]["%d"]%s`,
 			idx, widget.generateQueueJobLine(job.ID, job.Parameters, job.Job, time.Since(job.Queued), job.BookedBy, job.Status))
-
-		widget.Items = append(widget.Items, job)
 	}
 
 	return content
